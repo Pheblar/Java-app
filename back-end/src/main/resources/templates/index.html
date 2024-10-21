@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Post Container</title>
+</head>
+<body>
+    <h1>Hi</h1>
+    <p>
+        List of posts
+    </p>
+    <div th:if="${ not#lists.isEmpty(posts)}">
+        <table>
+            <tr>
+                <th>Title</th>
+                <th>Content</th>
+                <th>Author</th>
+            </tr>
+            <tr th:each="post : ${posts}">
+                <td th:text="${post.title}"></td>
+                <td th:text="${post.content}"></td>
+                <td th:text="${post.author}"></td>
+            </tr>
+            </table>
+    </div>
+
+    <a href="/create-post">Add a new post!</a>
+</body>
+</html>

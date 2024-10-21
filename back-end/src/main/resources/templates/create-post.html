@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Creating a post</title>
+</head>
+<body>
+<form method="post" th:action="@{/create-post}" th:object="${pojo}">
+    <input placeholder="Enter a title" required type="text" th:field="*{title}"/>
+    <textarea placeholder="Enter a content" required th:field="*{content}"></textarea>
+    <input placeholder="Enter a author" required th:field="*{author}"/>
+    <input type="submit" value="Create User">
+</form>
+</body>
+</html>

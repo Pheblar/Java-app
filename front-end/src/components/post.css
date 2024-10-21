@@ -1,0 +1,36 @@
+.post-card {
+    border-radius: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease-in-out;
+    background-color: rgba(255, 255, 255, 0.1); /* Transparent white background */
+    backdrop-filter: blur(5px); /* Apply blur effect */
+
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.post-card-header {
+    padding: 15px 20px;
+    background-color: rgba(255, 255, 255, 0.3); /* Transparent white background */
+    border-bottom: 1px solid #ddd;
+}
+
+.post-card-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #000000; /* Black text for dark backgrounds */
+}
+
+.post-card-text {
+    padding: 10px;
+    line-height: 1.5;
+    color: #000000; /* Black text for dark backgrounds */
+}
+
+/* Adjust text color based on background brightness */
+.post-card:has(.post-card-header[data-background-brightness="dark"]) .post-card-title,
+.post-card:has(.post-card-header[data-background-brightness="dark"]) .post-card-text {
+    color: #ffffff; /* White text for dark backgrounds */
+}

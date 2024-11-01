@@ -32,12 +32,15 @@ public class DefaultPostService implements PostService {
     private final RedisPostRepository redisPostRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final Mapper mapper;
+    private final Boolean fluentdEnabled;
 
-    public DefaultPostService(@Value("${fluentd.host}")String fluentdHost,@Value("${fluentd.port}") String fluentdPort, PostRepository postRepository, RedisPostRepository redisPostRepository, RedisTemplate<String, Object> redisTemplate, Mapper mapper) {
-        this.LOG  = FluentLogger.getLogger(
+    public DefaultPostService(@Value("${fluentd.host}") String fluentdHost, @Value("${fluentd.port}") String fluentdPort, PostRepository postRepository, RedisPostRepository redisPostRepository, RedisTemplate<String, Object> redisTemplate, Mapper mapper, @Value("${fluentd.enabled}") Boolean fluentdEnabled) {
+        this.fluentdEnabled = fluentdEnabled;
+        this.LOG = fluentdEnabled ? FluentLogger.getLogger(
                 "[demo-ci-proj]",
                 fluentdHost,
-                Integer.parseInt(fluentdPort));
+                Integer.parseInt(fluentdPort))
+                : null;
         this.postRepository = postRepository;
         this.redisPostRepository = redisPostRepository;
         this.redisTemplate = redisTemplate;
@@ -58,27 +61,29 @@ public class DefaultPostService implements PostService {
                         .put(POSTS_KEY, model.getId(), model);
                 postRepository.save(model);
             }
-
-            Map<String, Object> logmap = FluentdUtils.buildLog(
-                    LogLevel.INFO,
-                    Layer.SERVICE,
-                    DefaultPostService.class.getName().concat("#create"),
-                    "Pojo was saved",
-                    model
-            );
-            log.info("Collected map: {}", logmap);
-            log.info("connection: {}", LOG.isConnected());
-            LOG.log("#create", logmap);
+            if (fluentdEnabled) {
+                Map<String, Object> logmap = FluentdUtils.buildLog(
+                        LogLevel.INFO,
+                        Layer.SERVICE,
+                        DefaultPostService.class.getName().concat("#create"),
+                        "Pojo was saved",
+                        model
+                );
+                LOG.log("#create", logmap);
+            }
         } catch (IllegalStateException e) {
-            Map<String, Object> logmap = FluentdUtils.buildLog(
-                    LogLevel.ERROR,
-                    Layer.SERVICE,
-                    DefaultPostService.class.getName().concat("#create"),
-                    e.getMessage(),
-                    pojo
-            );
-            log.info("Collected errorMap: {}", logmap);
-            LOG.log("#create", logmap);
+            if (fluentdEnabled) {
+                Map<String, Object> logmap = FluentdUtils.buildLog(
+                        LogLevel.ERROR,
+                        Layer.SERVICE,
+                        DefaultPostService.class.getName().concat("#create"),
+                        e.getMessage(),
+                        pojo
+                );
+                log.info("Collected errorMap: {}", logmap);
+                LOG.log("#create", logmap);
+            }
+            log.error(e.getMessage());
         }
 
     }

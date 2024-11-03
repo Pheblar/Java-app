@@ -1,5 +1,6 @@
 package by.kulevets.demociproj.service;
 
+import by.kulevets.demociproj.entity.model.CachePostModel;
 import by.kulevets.demociproj.entity.model.PostModel;
 import by.kulevets.demociproj.entity.pojo.PostPojo;
 import by.kulevets.demociproj.enumeration.Layer;
@@ -8,25 +9,36 @@ import by.kulevets.demociproj.mapper.Mapper;
 import by.kulevets.demociproj.repository.PostRepository;
 import by.kulevets.demociproj.repository.RedisPostRepository;
 import by.kulevets.demociproj.utils.FluentdUtils;
+import jakarta.persistence.EntityManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fluentd.logger.FluentLogger;
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.context.annotation.RequestScope;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Spliterator;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ConnectionBuilder;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.*;
 import java.util.stream.StreamSupport;
 
 @Service
-@RequestScope
+@EnableScheduling
 public class DefaultPostService implements PostService {
     private static final String POSTS_KEY = "posts";
-    private final FluentLogger LOG;
+    private FluentLogger LOG;
     private static final Logger log = LogManager.getLogger(DefaultPostService.class);
     private final PostRepository postRepository;
     private final RedisPostRepository redisPostRepository;
@@ -50,16 +62,10 @@ public class DefaultPostService implements PostService {
     @Override
     public void create(PostPojo pojo) {
         try {
-            log.info("Fluentd is connected to app: {}", LOG.isConnected());
-            if (Objects.equals(pojo.getAuthor(), "Pepe")) {
-                throw new IllegalStateException("Author cannot be Pepe!");
-            }
             PostModel model = postRepository.save(mapper.toModel(pojo));
-            PostModel cached = getById(model.getId());
-            if (cached == null) {
-                redisTemplate.opsForHash()
-                        .put(POSTS_KEY, model.getId(), model);
-                postRepository.save(model);
+            Optional<CachePostModel> cached = redisPostRepository.findById(model.getId());
+            if (cached.isEmpty()) {
+                redisPostRepository.save(mapper.toCacheModel(model));
             }
             if (fluentdEnabled) {
                 Map<String, Object> logmap = FluentdUtils.buildLog(
@@ -90,17 +96,39 @@ public class DefaultPostService implements PostService {
 
     @Override
     public List<PostModel> getAll() {
-        Spliterator<PostModel> cachedSpliterator = redisPostRepository.findAll().spliterator();
-        if (cachedSpliterator.estimateSize() > 0) {
-            return StreamSupport.stream(cachedSpliterator, true)
+        var cached = StreamSupport.stream(redisPostRepository.findAll().spliterator(), true)
+                .toList();
+        var dbPostCount = postRepository.count();
+
+        if (((long) cached.size())  == dbPostCount){
+            return cached
+                    .stream()
+                    .map(mapper::toModel)
                     .toList();
         }
-        return postRepository.findAll();
+
+        return postRepository.findAll()
+                .parallelStream()
+                .toList();
     }
 
-    @Override
-    public PostModel getById(Long id) {
-        return (PostModel) redisTemplate.opsForHash()
-                .get(POSTS_KEY, id);
+    @Scheduled(cron = "0 * * * * ?")
+    public void syncDatabaseWithCache() {
+        log.info("[PostService] Starting synchronization... ");
+        var cached = StreamSupport.stream(redisPostRepository.findAll().spliterator(), true)
+                .map(CachePostModel::getId)
+                .toList();
+
+        var missingModels = postRepository.findByIds(cached);
+        if (!missingModels.isEmpty()) {
+            var caches = missingModels
+                    .stream()
+                    .map(mapper::toCacheModel)
+                    .toList();
+
+            redisPostRepository
+                    .saveAll(caches);
+        }
+        log.info("[PostService] Ending synchronization... ");
     }
 }

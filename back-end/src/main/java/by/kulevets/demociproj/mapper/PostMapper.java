@@ -1,5 +1,6 @@
 package by.kulevets.demociproj.mapper;
 
+import by.kulevets.demociproj.entity.model.CachePostModel;
 import by.kulevets.demociproj.entity.model.PostModel;
 import by.kulevets.demociproj.entity.pojo.PostPojo;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,26 @@ public class PostMapper implements Mapper{
                 .title(model.getTitle())
                 .content(model.getContent())
                 .author(model.getAuthor())
+                .build();
+    }
+
+    @Override
+    public PostModel toModel(CachePostModel cacheModel) {
+        return PostModel.builder()
+                .id(cacheModel.getId())
+                .title(cacheModel.getTitle())
+                .author(cacheModel.getAuthor())
+                .content(cacheModel.getContent())
+                .build();
+    }
+
+    @Override
+    public CachePostModel toCacheModel(PostModel model) {
+        return CachePostModel.builder()
+                .id(model.getId())
+                .author(model.getAuthor())
+                .title(model.getTitle())
+                .content(model.getContent())
                 .build();
     }
 }

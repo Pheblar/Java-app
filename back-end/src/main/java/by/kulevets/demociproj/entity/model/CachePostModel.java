@@ -13,9 +13,8 @@ import java.io.Serializable;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "posts")
-@Entity
-public class PostModel implements Serializable {
+@RedisHash("posts")
+public class CachePostModel implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;

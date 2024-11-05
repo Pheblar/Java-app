@@ -9,7 +9,6 @@ import by.kulevets.demociproj.mapper.Mapper;
 import by.kulevets.demociproj.repository.PostRepository;
 import by.kulevets.demociproj.repository.RedisPostRepository;
 import by.kulevets.demociproj.utils.FluentdUtils;
-import jakarta.persistence.EntityManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.fluentd.logger.FluentLogger;
@@ -21,16 +20,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
-import org.springframework.web.context.annotation.RequestScope;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ConnectionBuilder;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.StreamSupport;
 
@@ -119,16 +108,24 @@ public class DefaultPostService implements PostService {
                 .map(CachePostModel::getId)
                 .toList();
 
-        var missingModels = postRepository.findByIds(cached);
+        List<CachePostModel> cache = List.of();
+        List<PostModel> missingModels;
+
+        if (!cached.isEmpty()) {
+            missingModels = postRepository.findByIds(cached);
+        } else {
+            missingModels = postRepository.findAll();
+        }
+
         if (!missingModels.isEmpty()) {
-            var caches = missingModels
+            cache = missingModels
                     .stream()
                     .map(mapper::toCacheModel)
                     .toList();
-
-            redisPostRepository
-                    .saveAll(caches);
         }
+
+        redisPostRepository.saveAll(cache);
+
         log.info("[PostService] Ending synchronization... ");
     }
 }

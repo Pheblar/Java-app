@@ -31,6 +31,7 @@
 
   ### `GET /api/v1/posts`
   ### `POST /api/v1/create-post`
+  ### `GET /manage/health`
       Content-Type: application/json
 
     {

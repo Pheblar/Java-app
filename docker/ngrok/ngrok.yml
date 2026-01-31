@@ -1,4 +1,4 @@
-version: "2"
+version: "3"
 authtoken: ${NGROK_AUTHTOKEN}
 region: ${NGROK_REGION:-eu}
 tunnels:

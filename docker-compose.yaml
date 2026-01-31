@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: java_db
+      POSTGRES_USER: java_user
+      POSTGRES_PASSWORD: JavaPass123!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U java_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  # 3. Backend (Java Spring)
+  backend:
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: java_user
+      POSTGRES_PASSWORD: JavaPass123!
+      POSTGRES_DB: java_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SERVER_PORT: 8080
+      DEBUG: "true"
+      FLUENTD_ENABLED: "false"
+      FLUENTD_HOST: "localhost"
+      FLUENTD_PORT: "24224"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # 5. Nginx (прокси)
+  nginx:
+    build: ./front-end  # Используем Dockerfile из front-end
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+
+
+  # 6. Ngrok (туннель в интернет) - ОПЦИОНАЛЬНО
+  ngrok:
+    image: ngrok/ngrok:latest
+    environment:
+      NGROK_AUTHTOKEN: 38zl6Uq4manTEUDL2QmTRU9J597_5i9dFGD3fSvLGSJ81kp6z
+    command: >
+      http nginx:80
+      --host-header=rewrite
+      --log=stduot
+      --log-level=debug
+    ports:
+      - "4040:4040"
+    restart: unless-stopped
+    depends_on:
+      - nginx
+
+volumes:
+  postgres_data:
+  redis_data:
+  frontend_build:

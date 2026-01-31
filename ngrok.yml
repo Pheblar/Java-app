@@ -1,0 +1,12 @@
+version: "3"
+authtoken: ${NGROK_AUTHTOKEN}
+region: ${NGROK_REGION:-eu}
+tunnels:
+  webapp:
+    proto: http
+    addr: nginx:80
+    host_header: rewrite
+    inspect: false
+    bind_tls: true
+    schemes:
+      - https

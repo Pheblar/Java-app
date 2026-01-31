@@ -1,0 +1,23 @@
+FROM gradle:jdk21-alpine AS builder
+WORKDIR /app
+
+# 1. Копируем только файлы для зависимостей (лучшее кэширование)
+COPY build.gradle settings.gradle gradlew ./
+COPY gradle gradle
+# 2. Скачиваем зависимости (кэшируется отдельно)
+RUN gradle dependencies --no-daemon
+# 3. Копируем исходники и собираем
+COPY src src
+RUN gradle bootJar --no-daemon
+
+# ========== RUNTIME STAGE ==========
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+# 1. Создаём non-root пользователя для безопасности
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# 2. Копируем JAR
+COPY --from=builder --chown=appuser:appgroup /app/build/libs/*.jar app.jar
+# 3. Переключаемся на non-root пользователя
+USER appuser
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

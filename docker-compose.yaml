@@ -1,6 +1,3 @@
-# Docker Compose V2+ (version field is deprecated)
-# Create .env in project root with NGROK_AUTHTOKEN=your_token for ngrok
-
 services:
   postgres:
     image: postgres:15-alpine

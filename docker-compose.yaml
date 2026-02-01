@@ -31,7 +31,7 @@ services:
   backend:
     build:
       context: ./back-end
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-optimized
     env_file:
       - ./back-end/.env
     depends_on:
@@ -44,7 +44,7 @@ services:
   nginx:
     build:
       context: ./front-end
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-optimized
     ports:
       - "80:80"
       - "443:443"

@@ -1,2 +1,0 @@
-# Root .env (secrets: NGROK_AUTHTOKEN, etc.)
-/.env
